@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Swiggy Chatbot</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }
+        #chatbox { width: 300px; height: 400px; border: 1px solid #ccc; overflow-y: scroll; padding: 10px; margin: auto; }
+        #userInput { width: 200px; padding: 5px; }
+        button { padding: 6px 10px; margin-left: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <h2>Swiggy Chatbot</h2>
+    <div id="chatbox"></div>
+    <input type="text" id="userInput" placeholder="Ask something...">
+    <button onclick="sendMessage()">Send</button>
+
+    <script>
+        async function sendMessage() {
+            let userText = document.getElementById("userInput").value;
+            if (!userText.trim()) return;
+
+            let chatbox = document.getElementById("chatbox");
+            chatbox.innerHTML += `<p><b>You:</b> ${userText}</p>`;
+            document.getElementById("userInput").value = "";
+
+            let response = await fetch("https://chatbot-fs7k.onrender.com/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ "message": userText })
+            });
+
+            let data = await response.json();
+            chatbox.innerHTML += `<p><b>Bot:</b> ${data.response}</p>`;
+            chatbox.scrollTop = chatbox.scrollHeight;
+        }
+    </script>
+
+</body>
+</html>
