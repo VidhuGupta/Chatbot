@@ -3,29 +3,57 @@ import sqlite3
 
 app = Flask(__name__)
 
-# Function to connect to the database
-def connect_db():
+# Function to create the database and table if not exists
+def init_db():
     conn = sqlite3.connect('swiggy_chatbot.db')
     cursor = conn.cursor()
-    return conn, cursor
+    
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS questions (
+            id INTEGER PRIMARY KEY,
+            question TEXT NOT NULL,
+            answer TEXT NOT NULL
+        )
+    ''')
+    
+    # Insert default questions (if empty)
+    cursor.execute("SELECT COUNT(*) FROM questions")
+    if cursor.fetchone()[0] == 0:
+        default_questions = [
+            ("What is the menu for today?", "Our menu for today includes a variety of delicious dishes."),
+            ("What is the price of the dish?", "The price of the dish is Rs. 100."),
+            ("How can I place an order?", "You can place an order by calling us at 1234567890."),
+        ]
+        cursor.executemany("INSERT INTO questions (question, answer) VALUES (?, ?)", default_questions)
+        conn.commit()
 
-# Function to retrieve an answer from the database
+    conn.close()
+
+# Initialize the database
+init_db()
+
+# Function to get an answer from the database
 def get_answer(question):
-    conn, cursor = connect_db()
+    conn = sqlite3.connect('swiggy_chatbot.db')
+    cursor = conn.cursor()
+    
     cursor.execute("SELECT answer FROM questions WHERE question = ?", (question,))
     result = cursor.fetchone()
     conn.close()
-    return result[0] if result else "Sorry, I don't have an answer for that."
+    
+    return result[0] if result else "Sorry, I don't know the answer."
 
 @app.route('/chat', methods=['POST'])
 def chat():
-    data = request.get_json()
-    user_question = data.get("message", "").strip()
-    if not user_question:
-        return jsonify({"error": "Please provide a valid message."}), 400
+    try:
+        data = request.get_json()
+        user_question = data.get("message", "").strip()
+        bot_response = get_answer(user_question)
 
-    bot_response = get_answer(user_question)
-    return jsonify({"response": bot_response})
+        return jsonify({"response": bot_response})
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
