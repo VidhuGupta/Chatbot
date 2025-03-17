@@ -1,12 +1,15 @@
 from flask import Flask, request, jsonify
-from flask_cors import CORS  # Import CORS
+from flask_cors import CORS
 from fuzzywuzzy import process
 import sqlite3
 
 app = Flask(__name__)
-CORS(app)  # Allow all domains to access the API
+CORS(app)
 
-# Function to create the database and table if not exists
+# Temporary storage for tracking last suggested question
+session_data = {}
+
+# Function to create the database and insert default questions
 def init_db():
     conn = sqlite3.connect('swiggy_chatbot.db')
     cursor = conn.cursor()
@@ -19,10 +22,9 @@ def init_db():
         )
     ''')
 
-    # Insert default questions (if empty)
     cursor.execute("SELECT COUNT(*) FROM questions")
     if cursor.fetchone()[0] == 0:
-        print("Database is empty! Inserting default questions.")  # Debugging
+        print("Database is empty! Inserting default questions.")
         default_questions = [
             ("What is the menu for today?", "Our menu for today includes a variety of delicious dishes."),
             ("What is the price of the dish?", "The price of the dish is Rs. 100."),
@@ -44,18 +46,13 @@ def init_db():
 # Initialize the database
 init_db()
 
-# Function to get an answer from the database (Case-Insensitive)
+# Function to get an exact answer (Case-Insensitive)
 def get_answer(question):
     conn = sqlite3.connect('swiggy_chatbot.db')
     cursor = conn.cursor()
-
-    print(f"Searching for: {question}")  # Debugging
-
     cursor.execute("SELECT answer FROM questions WHERE LOWER(question) = LOWER(?)", (question,))
     result = cursor.fetchone()
     conn.close()
-
-    print(f"Found answer: {result}")  # Debugging
     return result[0] if result else None
 
 # Function to find the closest matching question
@@ -66,18 +63,10 @@ def find_closest_match(user_question):
     questions = [row[0] for row in cursor.fetchall()]
     conn.close()
 
-    print(f"User question: {user_question}")  # Debugging
-    print(f"Available questions: {questions}")  # Debugging
-
     if not questions:
-        return None  # If database is empty
+        return None
 
-    # Find the best match with a similarity score
     closest_match, score = process.extractOne(user_question, questions)
-
-    print(f"Closest match: {closest_match}, Score: {score}")  # Debugging
-
-    # Return the match if it's at least 50% similar
     return closest_match if score > 50 else None
 
 
@@ -85,11 +74,25 @@ def find_closest_match(user_question):
 def chat():
     try:
         data = request.get_json()
-        user_message = data.get("message", "").strip()
+        user_message = data.get("message", "").strip().lower()
+
+        user_id = "default_user"  # Static user tracking (can be improved with sessions)
+
+        # Handling "yes" or "no" responses
+        if user_message in ["yes", "no"]:
+            if user_id in session_data and session_data[user_id]:
+                if user_message == "yes":
+                    correct_question = session_data[user_id]
+                    answer = get_answer(correct_question)
+                    session_data[user_id] = None  # Clear stored question after use
+                    return jsonify({"response": answer})
+                else:
+                    session_data[user_id] = None  # Clear stored question
+                    return jsonify({"response": "Okay! Could you please rephrase your question?"})
 
         # Greeting responses
         greetings = ["hi", "hello", "hey", "good morning", "good evening"]
-        if user_message.lower() in greetings:
+        if user_message in greetings:
             return jsonify({
                 "response": "Hello! 😊 How can I assist you today?\nHere are some options:\n"
                             "- 📌 What is the menu for today?\n"
@@ -97,17 +100,17 @@ def chat():
                             "- 📌 What are your delivery timings?"
             })
 
-        # First, try to find the exact question
+        # Check for an exact answer
         bot_response = get_answer(user_message)
         if bot_response:
             return jsonify({"response": bot_response})
 
-        # If no exact match, find the closest similar question
+        # If no exact match, find a similar question
         closest_match = find_closest_match(user_message)
         if closest_match:
+            session_data[user_id] = closest_match  # Store suggested question
             return jsonify({"response": f"Did you mean: '{closest_match}'?"})
 
-        # If no close match is found
         return jsonify({"response": "Sorry, I don't understand your question. Can you rephrase it?"})
 
     except Exception as e:
@@ -116,4 +119,3 @@ def chat():
 
 if __name__ == '__main__':
     app.run(debug=True)
-
