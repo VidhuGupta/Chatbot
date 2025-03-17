@@ -72,23 +72,34 @@ def find_closest_match(user_question):
 def chat():
     try:
         data = request.get_json()
-        user_question = data.get("message", "").strip()
+        user_message = data.get("message", "").strip().lower()
+
+        # Greeting responses
+        greetings = ["hi", "hello", "hey", "good morning", "good evening"]
+        if user_message in greetings:
+            return jsonify({
+                "response": "Hello! 😊 How can I assist you today?\nHere are some options:\n"
+                            "- 📌 What is the menu for today?\n"
+                            "- 📌 How can I place an order?\n"
+                            "- 📌 What are your delivery timings?"
+            })
 
         # First, try to find the exact question
-        bot_response = get_answer(user_question)
+        bot_response = get_answer(user_message)
         if bot_response:
             return jsonify({"response": bot_response})
 
         # If no exact match, find the closest similar question
-        closest_match = find_closest_match(user_question)
+        closest_match = find_closest_match(user_message)
         if closest_match:
             return jsonify({"response": f"Did you mean: '{closest_match}'?"})
 
         # If no close match is found
-        return jsonify({"response": "Sorry, I don't understand your question."})
+        return jsonify({"response": "Sorry, I don't understand your question. Can you rephrase it?"})
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 
 if __name__ == '__main__':
