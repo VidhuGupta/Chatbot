@@ -22,6 +22,7 @@ def init_db():
     # Insert default questions (if empty)
     cursor.execute("SELECT COUNT(*) FROM questions")
     if cursor.fetchone()[0] == 0:
+        print("Database is empty! Inserting default questions.")  # Debugging
         default_questions = [
             ("What is the menu for today?", "Our menu for today includes a variety of delicious dishes."),
             ("What is the price of the dish?", "The price of the dish is Rs. 100."),
@@ -43,19 +44,19 @@ def init_db():
 # Initialize the database
 init_db()
 
-# Function to get an answer from the database
+# Function to get an answer from the database (Case-Insensitive)
 def get_answer(question):
     conn = sqlite3.connect('swiggy_chatbot.db')
     cursor = conn.cursor()
-    
-    cursor.execute("SELECT answer FROM questions WHERE question = ?", (question,))
+
+    print(f"Searching for: {question}")  # Debugging
+
+    cursor.execute("SELECT answer FROM questions WHERE LOWER(question) = LOWER(?)", (question,))
     result = cursor.fetchone()
     conn.close()
-    
-    return result[0] if result else "Sorry, I don't know the answer."
 
-# Function to find the closest matching question
-from fuzzywuzzy import process
+    print(f"Found answer: {result}")  # Debugging
+    return result[0] if result else None
 
 # Function to find the closest matching question
 def find_closest_match(user_question):
@@ -66,6 +67,7 @@ def find_closest_match(user_question):
     conn.close()
 
     print(f"User question: {user_question}")  # Debugging
+    print(f"Available questions: {questions}")  # Debugging
 
     if not questions:
         return None  # If database is empty
@@ -83,11 +85,11 @@ def find_closest_match(user_question):
 def chat():
     try:
         data = request.get_json()
-        user_message = data.get("message", "").strip().lower()
+        user_message = data.get("message", "").strip()
 
         # Greeting responses
         greetings = ["hi", "hello", "hey", "good morning", "good evening"]
-        if user_message in greetings:
+        if user_message.lower() in greetings:
             return jsonify({
                 "response": "Hello! 😊 How can I assist you today?\nHere are some options:\n"
                             "- 📌 What is the menu for today?\n"
@@ -112,6 +114,6 @@ def chat():
         return jsonify({"error": str(e)}), 500
 
 
-
 if __name__ == '__main__':
     app.run(debug=True)
+
