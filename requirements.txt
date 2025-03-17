@@ -3,5 +3,6 @@ flask-cors
 gunicorn
 fuzzywuzzy
 pandas
+python-Levenshtein
 SQLAlchemy
 
