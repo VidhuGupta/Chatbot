@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS  # Import CORS
+from fuzzywuzzy import process
 import sqlite3
 
 app = Flask(__name__)
@@ -53,17 +54,42 @@ def get_answer(question):
     
     return result[0] if result else "Sorry, I don't know the answer."
 
+# Function to find the closest matching question
+def find_closest_match(user_question):
+    conn = sqlite3.connect('swiggy_chatbot.db')
+    cursor = conn.cursor()
+    cursor.execute("SELECT question FROM questions")
+    questions = [row[0] for row in cursor.fetchall()]
+    conn.close()
+
+    # Find the best match with a similarity score
+    closest_match, score = process.extractOne(user_question, questions)
+
+    # Return the match only if it's at least 70% similar
+    return closest_match if score > 70 else None
+
 @app.route('/chat', methods=['POST'])
 def chat():
     try:
         data = request.get_json()
         user_question = data.get("message", "").strip()
-        bot_response = get_answer(user_question)
 
-        return jsonify({"response": bot_response})
+        # First, try to find the exact question
+        bot_response = get_answer(user_question)
+        if bot_response:
+            return jsonify({"response": bot_response})
+
+        # If no exact match, find the closest similar question
+        closest_match = find_closest_match(user_question)
+        if closest_match:
+            return jsonify({"response": f"Did you mean: '{closest_match}'?"})
+
+        # If no close match is found
+        return jsonify({"response": "Sorry, I don't understand your question."})
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 if __name__ == '__main__':
     app.run(debug=True)
