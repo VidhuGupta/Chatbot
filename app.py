@@ -17,7 +17,7 @@ def init_db():
             answer TEXT NOT NULL
         )
     ''')
-    
+
     # Insert default questions (if empty)
     cursor.execute("SELECT COUNT(*) FROM questions")
     if cursor.fetchone()[0] == 0:
@@ -25,11 +25,19 @@ def init_db():
             ("What is the menu for today?", "Our menu for today includes a variety of delicious dishes."),
             ("What is the price of the dish?", "The price of the dish is Rs. 100."),
             ("How can I place an order?", "You can place an order by calling us at 1234567890."),
+            ("What are your delivery timings?", "We deliver from 10 AM to 10 PM."),
+            ("Do you have vegetarian options?", "Yes, we offer a variety of vegetarian dishes."),
+            ("Can I customize my order?", "Yes, you can customize your order by selecting preferences."),
+            ("Do you offer home delivery?", "Yes, we offer home delivery within a 5km radius."),
+            ("What payment methods do you accept?", "We accept cash, credit/debit cards, and online payments."),
+            ("Is there a minimum order value?", "Yes, the minimum order value is Rs. 200."),
+            ("Can I cancel my order?", "Yes, orders can be canceled within 5 minutes of placing them."),
         ]
         cursor.executemany("INSERT INTO questions (question, answer) VALUES (?, ?)", default_questions)
         conn.commit()
 
     conn.close()
+
 
 # Initialize the database
 init_db()
