@@ -1,7 +1,9 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS  # Import CORS
 import sqlite3
 
 app = Flask(__name__)
+CORS(app)  # Allow all domains to access the API
 
 # Function to create the database and table if not exists
 def init_db():
