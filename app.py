@@ -55,6 +55,9 @@ def get_answer(question):
     return result[0] if result else "Sorry, I don't know the answer."
 
 # Function to find the closest matching question
+from fuzzywuzzy import process
+
+# Function to find the closest matching question
 def find_closest_match(user_question):
     conn = sqlite3.connect('swiggy_chatbot.db')
     cursor = conn.cursor()
@@ -62,11 +65,19 @@ def find_closest_match(user_question):
     questions = [row[0] for row in cursor.fetchall()]
     conn.close()
 
+    print(f"User question: {user_question}")  # Debugging
+
+    if not questions:
+        return None  # If database is empty
+
     # Find the best match with a similarity score
     closest_match, score = process.extractOne(user_question, questions)
 
-    # Return the match only if it's at least 70% similar
-    return closest_match if score > 70 else None
+    print(f"Closest match: {closest_match}, Score: {score}")  # Debugging
+
+    # Return the match if it's at least 50% similar
+    return closest_match if score > 50 else None
+
 
 @app.route('/chat', methods=['POST'])
 def chat():
